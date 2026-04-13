@@ -136,14 +136,18 @@ func runUp(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	containerID, err := container.Create(ctx, container.CreateOptions{
+	createOpts := container.CreateOptions{
 		Name:            containerName,
 		Image:           image,
 		Port:            allocatedPort,
 		BindMountSource: projectRoot,
 		BindMountTarget: remotePath,
 		WorkingDir:      remotePath,
-	})
+		Env:             mergeEnv(nil, cfg.Env),
+	}
+	configureContainerRuntime(containerName, cfg.Features, &createOpts)
+
+	containerID, err := container.Create(ctx, createOpts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create container: %v\n", err)
 		os.Exit(1)
@@ -175,6 +179,7 @@ func runUp(cmd *cobra.Command, args []string) {
 		Image:           image,
 		SSHPort:         allocatedPort,
 		WorkspaceVolume: "",
+		DockerVolume:    createOpts.DockerDataVolume,
 		Status:          "running",
 		CreatedAt:       time.Now(),
 	}

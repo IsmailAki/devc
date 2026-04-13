@@ -10,10 +10,11 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/IsmailAki/devc/internal/baseimage"
 	"github.com/IsmailAki/devc/pkg/types"
 )
 
-const DockerfileTemplate = `FROM devc-base:latest
+const DockerfileTemplate = `FROM %s
 
 # Install features
 %s
@@ -47,7 +48,7 @@ func GenerateDockerfile(features []types.FeatureSpec, registry *Registry) (strin
 	}
 
 	installSection := strings.Join(commands, "\n")
-	return fmt.Sprintf(DockerfileTemplate, installSection), nil
+	return fmt.Sprintf(DockerfileTemplate, baseimage.FullImageName, installSection), nil
 }
 
 func generateInstallCommands(spec types.FeatureSpec, feature types.Feature) ([]string, error) {

@@ -18,10 +18,14 @@ Instead of maintaining complex Dockerfiles per project, you describe the tools y
 - JetBrains connection instructions via SSH/Gateway
 - Rebuild containers when feature requirements change
 - Automatic container state and SSH config management
+- Non-root workspace ownership for writable repos and build outputs
+- Nested Docker support when the `docker` feature is enabled
 
 ## How It Works
 
 `devc` builds a base Ubuntu image, installs the features you configure, starts a Docker container, and adds an SSH entry to your local `~/.ssh/config`.
+
+Containers are prepared for a non-root `dev` user. In local project mode, `devc` aligns that user with your host UID/GID so bind-mounted repositories stay writable. In GitHub mode, the managed workspace volume is repaired and the repository is cloned as `dev` instead of `root`.
 
 From there you can:
 
@@ -33,6 +37,8 @@ There are two working modes:
 
 - Local project mode: your current project folder is bind-mounted into the container under `/workspace/<project>`
 - GitHub mode: the repository is cloned inside a Docker volume and managed under `~/.devc`
+
+If the `docker` feature is present, `devc` starts the container in privileged mode, attaches a dedicated `/var/lib/docker` volume, and launches an internal `dockerd` so `docker build`, `docker run`, and similar commands work from inside the dev container.
 
 ## Requirements
 

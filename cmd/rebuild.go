@@ -145,9 +145,12 @@ func runRebuild(cmd *cobra.Command, args []string) {
 	allocatedPort := currentState.SSHPort
 
 	fmt.Println("\nStopping and removing old container...")
+	keepDockerVolume := hasFeature(cfg.Features, "docker") && currentState.DockerVolume != ""
 	if err := container.Destroy(ctx, containerName, &container.DestroyOptions{
-		KeepVolume: true,
-		VolumeName: currentState.WorkspaceVolume,
+		KeepVolume:       true,
+		KeepExtraVolumes: keepDockerVolume,
+		VolumeName:       currentState.WorkspaceVolume,
+		ExtraVolumes:     []string{currentState.DockerVolume},
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to remove old container: %v\n", err)
 		os.Exit(1)
@@ -158,6 +161,7 @@ func runRebuild(cmd *cobra.Command, args []string) {
 		Name:  containerName,
 		Image: newImage,
 		Port:  allocatedPort,
+		Env:   mergeEnv(nil, cfg.Env),
 	}
 	if metadata.InitMode == "local" {
 		projectRoot := metadata.SourcePath
@@ -173,6 +177,7 @@ func runRebuild(cmd *cobra.Command, args []string) {
 	} else {
 		createOpts.VolumeName = volumeName
 	}
+	configureContainerRuntime(containerName, cfg.Features, &createOpts)
 
 	containerID, err := container.Create(ctx, createOpts)
 	if err != nil {
@@ -202,6 +207,13 @@ func runRebuild(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if metadata.InitMode != "local" {
+		if err := container.PrepareWorkspace(ctx, containerName, "/workspace"); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to prepare workspace: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	featureNames := make([]string, len(cfg.Features))
 	for i, f := range cfg.Features {
 		featureNames[i] = f.Name
@@ -212,6 +224,7 @@ func runRebuild(cmd *cobra.Command, args []string) {
 		Image:           newImage,
 		SSHPort:         allocatedPort,
 		WorkspaceVolume: volumeName,
+		DockerVolume:    createOpts.DockerDataVolume,
 		Status:          "running",
 		CreatedAt:       time.Now(),
 	}

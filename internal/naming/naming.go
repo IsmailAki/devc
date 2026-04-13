@@ -63,3 +63,7 @@ func GenerateLocalContainerName(projectName, projectPath string) string {
 func GenerateVolumeName(containerName string) string {
 	return containerName
 }
+
+func GenerateDockerVolumeName(containerName string) string {
+	return containerName + "-docker"
+}

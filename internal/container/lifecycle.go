@@ -71,8 +71,21 @@ func createContainer(ctx context.Context, cli dockerClient, name string, opts Cr
 		})
 	}
 
+	if opts.DockerDataVolume != "" {
+		if err := createVolume(ctx, opts.DockerDataVolume); err != nil {
+			return "", fmt.Errorf("failed to create docker data volume: %w", err)
+		}
+
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeVolume,
+			Source: opts.DockerDataVolume,
+			Target: "/var/lib/docker",
+		})
+	}
+
 	hostConfig := &container.HostConfig{
-		Mounts: mounts,
+		Mounts:     mounts,
+		Privileged: opts.Privileged,
 		PortBindings: nat.PortMap{
 			"22/tcp": []nat.PortBinding{
 				{

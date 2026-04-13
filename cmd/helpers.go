@@ -5,8 +5,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 
 	"github.com/IsmailAki/devc/internal/config"
+	"github.com/IsmailAki/devc/internal/container"
 	"github.com/IsmailAki/devc/internal/naming"
 	"github.com/IsmailAki/devc/internal/state"
 	"github.com/IsmailAki/devc/pkg/types"
@@ -146,4 +148,61 @@ func ensureProjectName(cfg *types.ProjectConfig, projectRoot string) error {
 func currentWorkingDir() string {
 	cwd, _ := os.Getwd()
 	return cwd
+}
+
+func hasFeature(features []types.FeatureSpec, name string) bool {
+	for _, feature := range features {
+		if feature.Name == name {
+			return true
+		}
+	}
+
+	return false
+}
+
+func mergeEnv(base map[string]string, additions map[string]string) map[string]string {
+	if len(base) == 0 && len(additions) == 0 {
+		return nil
+	}
+
+	merged := make(map[string]string, len(base)+len(additions))
+	for k, v := range base {
+		merged[k] = v
+	}
+	for k, v := range additions {
+		merged[k] = v
+	}
+
+	return merged
+}
+
+func localUserEnv() map[string]string {
+	uid := os.Getuid()
+	gid := os.Getgid()
+	if uid <= 0 || gid <= 0 {
+		return nil
+	}
+
+	return map[string]string{
+		"DEVC_UID": strconv.Itoa(uid),
+		"DEVC_GID": strconv.Itoa(gid),
+	}
+}
+
+func configureContainerRuntime(containerName string, features []types.FeatureSpec, opts *container.CreateOptions) {
+	if opts.BindMountSource != "" {
+		opts.Env = mergeEnv(opts.Env, localUserEnv())
+	}
+
+	if !hasFeature(features, "docker") {
+		return
+	}
+
+	opts.Privileged = true
+	opts.DockerDataVolume = naming.GenerateDockerVolumeName(containerName)
+	opts.Env = mergeEnv(opts.Env, map[string]string{
+		"DEVC_ENABLE_DIND": "1",
+		"DOCKER_BUILDKIT":  "1",
+		"DOCKER_HOST":      "unix:///var/run/docker.sock",
+	})
 }

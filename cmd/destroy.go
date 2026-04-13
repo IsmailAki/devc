@@ -69,8 +69,9 @@ func runDestroy(cmd *cobra.Command, args []string) {
 	fmt.Printf("Destroying container '%s'...\n", containerName)
 
 	if err := container.Destroy(ctx, containerName, &container.DestroyOptions{
-		KeepVolume: destroyKeepVolume,
-		VolumeName: containerState.WorkspaceVolume,
+		KeepVolume:   destroyKeepVolume,
+		VolumeName:   containerState.WorkspaceVolume,
+		ExtraVolumes: []string{containerState.DockerVolume},
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to destroy container: %v\n", err)
 		os.Exit(1)

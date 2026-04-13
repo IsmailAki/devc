@@ -29,3 +29,10 @@ func TestGenerateContainerNameSanitizesSegments(t *testing.T) {
 		t.Fatalf("GenerateContainerName() = %q, want %q prefix", name, Prefix)
 	}
 }
+
+func TestGenerateDockerVolumeNameIsDerivedFromContainer(t *testing.T) {
+	got := GenerateDockerVolumeName("devc-example-12345")
+	if got != "devc-example-12345-docker" {
+		t.Fatalf("GenerateDockerVolumeName() = %q", got)
+	}
+}

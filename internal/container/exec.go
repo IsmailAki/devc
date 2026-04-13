@@ -5,10 +5,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 )
+
+type ExecOptions struct {
+	Cmd        []string
+	User       string
+	WorkingDir string
+	Env        []string
+}
 
 func GetSSHPublicKey() (string, error) {
 	home, err := os.UserHomeDir()
@@ -32,14 +40,17 @@ func GetSSHPublicKey() (string, error) {
 	return "", fmt.Errorf("no SSH public key found in ~/.ssh/")
 }
 
-func Exec(ctx context.Context, containerName string, cmd []string) error {
+func Exec(ctx context.Context, containerName string, opts ExecOptions) error {
 	cli, err := getDockerClient()
 	if err != nil {
 		return err
 	}
 
 	execConfig := container.ExecOptions{
-		Cmd:          cmd,
+		Cmd:          opts.Cmd,
+		User:         opts.User,
+		WorkingDir:   opts.WorkingDir,
+		Env:          opts.Env,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
@@ -71,6 +82,12 @@ func Exec(ctx context.Context, containerName string, cmd []string) error {
 	return nil
 }
 
+func PrepareWorkspace(ctx context.Context, containerName, workspacePath string) error {
+	quotedPath := shellQuote(workspacePath)
+	cmd := []string{"sh", "-lc", fmt.Sprintf("mkdir -p %s && chown -R dev:dev %s", quotedPath, quotedPath)}
+	return Exec(ctx, containerName, ExecOptions{Cmd: cmd})
+}
+
 func SetupSSHKey(ctx context.Context, containerName string) error {
 	publicKey, err := GetSSHPublicKey()
 	if err != nil {
@@ -86,10 +103,14 @@ func SetupSSHKey(ctx context.Context, containerName string) error {
 	}
 
 	for _, cmd := range cmds {
-		if err := Exec(ctx, containerName, cmd); err != nil {
+		if err := Exec(ctx, containerName, ExecOptions{Cmd: cmd}); err != nil {
 			return fmt.Errorf("failed to run %v: %w", cmd, err)
 		}
 	}
 
 	return nil
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }

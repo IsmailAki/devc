@@ -141,11 +141,15 @@ func runCreate(cmd *cobra.Command, args []string) {
 	fmt.Printf("Allocated port: %d\n", allocatedPort)
 
 	fmt.Println("Creating container...")
-	containerID, err := container.Create(ctx, container.CreateOptions{
+	createOpts := container.CreateOptions{
 		Name:  containerName,
 		Image: image,
 		Port:  allocatedPort,
-	})
+		Env:   mergeEnv(nil, projectConfig.Env),
+	}
+	configureContainerRuntime(containerName, projectConfig.Features, &createOpts)
+
+	containerID, err := container.Create(ctx, createOpts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create container: %v\n", err)
 		os.Exit(1)
@@ -167,6 +171,11 @@ func runCreate(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if err := container.PrepareWorkspace(ctx, containerName, "/workspace"); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to prepare workspace: %v\n", err)
+		os.Exit(1)
+	}
+
 	repoPath := "/workspace/" + repo
 	cloneCmd := []string{"git", "clone"}
 	if createBranch != "" {
@@ -175,10 +184,15 @@ func runCreate(cmd *cobra.Command, args []string) {
 	cloneCmd = append(cloneCmd, repoURL, repoPath)
 
 	fmt.Printf("Cloning repository to %s...\n", repoPath)
-	if err := container.Exec(ctx, containerName, cloneCmd); err != nil {
+	if err := container.Exec(ctx, containerName, container.ExecOptions{
+		Cmd:        cloneCmd,
+		User:       "dev",
+		WorkingDir: "/workspace",
+	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to clone repository: %v\n", err)
 		if cleanupErr := container.Destroy(ctx, containerName, &container.DestroyOptions{
-			VolumeName: naming.GenerateVolumeName(containerName),
+			VolumeName:   naming.GenerateVolumeName(containerName),
+			ExtraVolumes: []string{naming.GenerateDockerVolumeName(containerName)},
 		}); cleanupErr != nil {
 			fmt.Fprintf(os.Stderr, "Cleanup warning: failed to remove incomplete container: %v\n", cleanupErr)
 		}
@@ -205,6 +219,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		Image:           image,
 		SSHPort:         allocatedPort,
 		WorkspaceVolume: naming.GenerateVolumeName(containerName),
+		DockerVolume:    createOpts.DockerDataVolume,
 		Status:          "running",
 		CreatedAt:       time.Now(),
 	}

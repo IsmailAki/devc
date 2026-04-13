@@ -11,14 +11,16 @@ import (
 )
 
 type CreateOptions struct {
-	Name            string
-	Image           string
-	Port            int
-	VolumeName      string
-	BindMountSource string
-	BindMountTarget string
-	WorkingDir      string
-	Env             map[string]string
+	Name             string
+	Image            string
+	Port             int
+	VolumeName       string
+	DockerDataVolume string
+	BindMountSource  string
+	BindMountTarget  string
+	WorkingDir       string
+	Env              map[string]string
+	Privileged       bool
 }
 
 func Create(ctx context.Context, opts CreateOptions) (string, error) {
@@ -88,8 +90,10 @@ func Stop(ctx context.Context, name string) error {
 }
 
 type DestroyOptions struct {
-	KeepVolume bool
-	VolumeName string
+	KeepVolume       bool
+	KeepExtraVolumes bool
+	VolumeName       string
+	ExtraVolumes     []string
 }
 
 func Destroy(ctx context.Context, name string, opts *DestroyOptions) error {
@@ -113,6 +117,17 @@ func Destroy(ctx context.Context, name string, opts *DestroyOptions) error {
 		if volumeName != "" {
 			if err := removeVolume(ctx, cli, volumeName); err != nil {
 				fmt.Printf("Warning: failed to remove volume: %v\n", err)
+			}
+		}
+	}
+
+	if !opts.KeepExtraVolumes {
+		for _, volumeName := range opts.ExtraVolumes {
+			if volumeName == "" {
+				continue
+			}
+			if err := removeVolume(ctx, cli, volumeName); err != nil {
+				fmt.Printf("Warning: failed to remove volume %s: %v\n", volumeName, err)
 			}
 		}
 	}

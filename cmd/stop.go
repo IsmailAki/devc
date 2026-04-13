@@ -59,6 +59,7 @@ func runStop(cmd *cobra.Command, args []string) {
 		Image:           containerState.Image,
 		SSHPort:         containerState.SSHPort,
 		WorkspaceVolume: containerState.WorkspaceVolume,
+		DockerVolume:    containerState.DockerVolume,
 		Status:          "stopped",
 		CreatedAt:       containerState.CreatedAt,
 	}

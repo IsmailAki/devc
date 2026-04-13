@@ -10,4 +10,7 @@ install:
       curl -fsSL https://get.docker.com -o get-docker.sh
       sh get-docker.sh
       rm get-docker.sh
+      apt-get update
+      apt-get install -y uidmap
+      rm -rf /var/lib/apt/lists/*
       usermod -aG docker dev
