@@ -1,0 +1,14 @@
+name: rust
+description: Install Rust and cargo
+version: "1.0.0"
+depends: []
+params:
+  version:
+    description: Rust version to install
+    default: "latest"
+install:
+  - name: Install Rust via rustup
+    run: |
+      set -e
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      echo 'source /home/dev/.cargo/env' >> /home/dev/.bashrc

@@ -1,0 +1,13 @@
+name: java
+description: Install OpenJDK and build tools
+version: "1.0.0"
+depends: []
+params:
+  version:
+    description: Java version to install
+    default: "21"
+install:
+  - name: Install OpenJDK and build tools
+    run: |
+      set -e
+      apt-get update && apt-get install -y openjdk-{{.Version}}-jdk maven gradle && rm -rf /var/lib/apt/lists/*

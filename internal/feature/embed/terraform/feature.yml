@@ -1,0 +1,21 @@
+name: terraform
+description: Install Terraform
+version: "1.0.0"
+depends: []
+params:
+  version:
+    description: Terraform version to install
+    default: "latest"
+install:
+  - name: Install Terraform
+    run: |
+      set -e
+      apt-get update && apt-get install -y unzip
+      VERSION={{.Version}}
+      if [ "$VERSION" = "latest" ]; then
+        curl -fsSL https://releases.hashicorp.com/terraform/ -o - | grep -o 'terraform_[0-9.]*_linux_amd64.zip' | head -1 | xargs -I {} curl -fsSL https://releases.hashicorp.com/terraform/{} -o /tmp/terraform.zip
+      else
+        curl -fsSL https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_amd64.zip -o /tmp/terraform.zip
+      fi
+      unzip /tmp/terraform.zip -d /usr/local/bin
+      rm /tmp/terraform.zip

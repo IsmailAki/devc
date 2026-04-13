@@ -1,0 +1,19 @@
+name: opencode
+description: Install OpenCode CLI
+version: "1.0.0"
+depends: []
+params:
+  version:
+    description: OpenCode version to install
+    default: "latest"
+install:
+  - name: Download and install OpenCode
+    run: |
+      set -e
+      ARCH=$(uname -m | sed 's/aarch64/arm64/' | sed 's/x86_64/amd64/')
+      if [ "{{.Version}}" = "latest" ]; then
+        curl -fsSL https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-${ARCH}.tar.gz | tar -xz -C /usr/local/bin opencode
+      else
+        curl -fsSL https://github.com/anomalyco/opencode/releases/download/{{.Version}}/opencode-linux-${ARCH}.tar.gz | tar -xz -C /usr/local/bin opencode
+      fi
+      chmod +x /usr/local/bin/opencode

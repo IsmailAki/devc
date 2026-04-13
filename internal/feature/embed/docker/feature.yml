@@ -1,0 +1,13 @@
+name: docker
+description: Install Docker CLI for Docker-in-Docker
+version: "1.0.0"
+depends: []
+params: {}
+install:
+  - name: Install Docker
+    run: |
+      set -e
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      sh get-docker.sh
+      rm get-docker.sh
+      usermod -aG docker dev

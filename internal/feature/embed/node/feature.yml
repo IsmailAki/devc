@@ -1,0 +1,14 @@
+name: node
+description: Install Node.js and npm
+version: "1.0.0"
+depends: []
+params:
+  version:
+    description: Node.js version to install
+    default: "20"
+install:
+  - name: Install Node.js
+    run: |
+      set -e
+      curl -fsSL https://deb.nodesource.com/setup_{{.Version}}.x | bash -
+      apt-get install -y nodejs

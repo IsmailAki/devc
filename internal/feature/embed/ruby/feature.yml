@@ -1,0 +1,13 @@
+name: ruby
+description: Install Ruby and bundler
+version: "1.0.0"
+depends: []
+params:
+  version:
+    description: Ruby version to install
+    default: "3.2"
+install:
+  - name: Install Ruby
+    run: |
+      set -e
+      apt-get update && apt-get install -y ruby{{.Version}} ruby{{.Version}}-dev bundler && rm -rf /var/lib/apt/lists/*

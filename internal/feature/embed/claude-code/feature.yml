@@ -1,0 +1,18 @@
+name: claude-code
+description: Install Claude Code CLI
+version: "1.0.0"
+depends:
+  - node
+params:
+  version:
+    description: Claude Code version to install
+    default: "latest"
+install:
+  - name: Install Claude Code
+    run: |
+      set -e
+      if [ "{{.Version}}" = "latest" ]; then
+        npm install -g @anthropic-ai/claude-code
+      else
+        npm install -g @anthropic-ai/claude-code@{{.Version}}
+      fi
