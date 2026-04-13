@@ -59,6 +59,19 @@ make build
 
 The binary will be created at `bin/devc`.
 
+## Releases
+
+This repository is configured to publish GitHub releases with GoReleaser.
+
+To cut a new release:
+
+```bash
+git tag -a v0.1.1 -m "Release v0.1.1"
+git push origin v0.1.1
+```
+
+Pushing a `v*` tag triggers GitHub Actions, which runs GoReleaser, builds release archives for macOS and Linux, and publishes them to the GitHub release page.
+
 To install it system-wide:
 
 ```bash
