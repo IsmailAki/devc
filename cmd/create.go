@@ -256,9 +256,11 @@ func runCreate(cmd *cobra.Command, args []string) {
 	fmt.Printf("\nContainer '%s' created successfully!\n", containerName)
 	fmt.Printf("  Languages: %s\n", strings.Join(detectedLanguages, ", "))
 	fmt.Printf("  SSH: ssh %s\n", containerName)
+	fmt.Printf("  Root SSH: ssh %s\n", sshconfig.RootHostName(containerName))
 	fmt.Printf("  Port: %d\n", allocatedPort)
 	fmt.Printf("\nTo connect:\n")
 	fmt.Printf("  SSH: ssh %s\n", containerName)
+	fmt.Printf("  Root SSH: ssh %s\n", sshconfig.RootHostName(containerName))
 	fmt.Printf("  VS Code: code --remote ssh-remote+%s %s\n", containerName, repoPath)
 }
 

@@ -118,10 +118,10 @@ RUN groupadd --gid 1000 $USER && \
 
 # Configure SSH
 RUN mkdir -p /var/run/sshd && \
-    sed -i 's/#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config && \
     sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
-    echo "AllowUsers dev" >> /etc/ssh/sshd_config
+    echo "AllowUsers dev root" >> /etc/ssh/sshd_config
 
 # SSH agent forwarding support
 RUN echo 'Host *\n    ForwardAgent yes' >> /etc/ssh/ssh_config
@@ -139,5 +139,5 @@ CMD ["/usr/sbin/sshd", "-D"]
 `, base64.StdEncoding.EncodeToString([]byte(entrypointScript)))
 
 const ImageName = "devc-base"
-const ImageTag = "v2"
+const ImageTag = "v3"
 const FullImageName = ImageName + ":" + ImageTag

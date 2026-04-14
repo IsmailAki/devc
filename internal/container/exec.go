@@ -96,10 +96,15 @@ func SetupSSHKey(ctx context.Context, containerName string) error {
 
 	cmds := [][]string{
 		{"mkdir", "-p", "/home/dev/.ssh"},
+		{"mkdir", "-p", "/root/.ssh"},
 		{"chmod", "700", "/home/dev/.ssh"},
+		{"chmod", "700", "/root/.ssh"},
 		{"sh", "-c", fmt.Sprintf("echo '%s' > /home/dev/.ssh/authorized_keys", publicKey)},
+		{"sh", "-c", fmt.Sprintf("echo '%s' > /root/.ssh/authorized_keys", publicKey)},
 		{"chmod", "600", "/home/dev/.ssh/authorized_keys"},
+		{"chmod", "600", "/root/.ssh/authorized_keys"},
 		{"chown", "-R", "dev:dev", "/home/dev/.ssh"},
+		{"chown", "-R", "root:root", "/root/.ssh"},
 	}
 
 	for _, cmd := range cmds {

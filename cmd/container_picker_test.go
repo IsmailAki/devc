@@ -18,6 +18,33 @@ func TestResolveDestroyContainerNameUsesArgument(t *testing.T) {
 	}
 }
 
+func TestResolveSSHContainerNameUsesArgument(t *testing.T) {
+	got, err := resolveSSHContainerName([]string{"devc-example"})
+	if err != nil {
+		t.Fatalf("resolveSSHContainerName() error = %v", err)
+	}
+	if got != "devc-example" {
+		t.Fatalf("resolveSSHContainerName() = %q, want %q", got, "devc-example")
+	}
+}
+
+func TestResolveSSHContainerNameUsesSingleContainer(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	if err := saveTestContainer("devc-example", "running"); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := resolveSSHContainerName(nil)
+	if err != nil {
+		t.Fatalf("resolveSSHContainerName() error = %v", err)
+	}
+	if got != "devc-example" {
+		t.Fatalf("resolveSSHContainerName() = %q, want %q", got, "devc-example")
+	}
+}
+
 func TestResolveDestroyContainerNameUsesSingleContainer(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)

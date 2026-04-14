@@ -4,6 +4,8 @@
 
 The primary path is simple: point `devc` at a GitHub repository, let it detect the stack and prepare the environment, then connect with VS Code, JetBrains, or plain SSH. Local projects are supported too, but GitHub is the default experience.
 
+Each container exposes two SSH identities by default: `ssh <name>` connects as `dev`, and `ssh <name>-root` connects as `root` for admin tasks like installing missing packages.
+
 ## Why devc
 
 - Start a development environment directly from a GitHub repository
@@ -93,9 +95,12 @@ Once the environment is ready, connect with:
 
 ```bash
 devc ssh
+devc ssh --root
 devc connect vscode
 devc connect jetbrains
 ```
+
+`devc ssh` connects as the default `dev` user. `devc ssh --root` connects as `root`.
 
 ### Bring an existing local project
 
@@ -106,6 +111,41 @@ devc init
 devc build
 devc up
 devc ssh
+```
+
+If you need root access for package installation or system changes:
+
+```bash
+devc ssh --root
+# or
+ssh <container-name>-root
+```
+
+If you stay on the default `dev` user, passwordless `sudo` is available:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y netcat-openbsd
+```
+
+You can also switch to root after connecting as `dev`:
+
+```bash
+sudo -i
+```
+
+Typical package-install flows:
+
+```bash
+# Option 1: stay on dev and use sudo
+devc ssh
+sudo apt-get update
+sudo apt-get install -y netcat-openbsd
+
+# Option 2: connect as root directly
+devc ssh --root
+apt-get update
+apt-get install -y netcat-openbsd
 ```
 
 This creates `.devc/devc.yml` in your project and lets you pick plugins in a terminal UI.
