@@ -14,7 +14,7 @@ func TestIsRepoURL(t *testing.T) {
 		{"https://github.com/owner/repo.git", true},
 		{"git@github.com:owner/repo.git", true},
 		{"github.com/owner/repo", true},
-		{"owner/repo", true},
+		{"owner/repo", false},
 		{"create", false},
 		{"list", false},
 		{"delete", false},

@@ -49,8 +49,9 @@ This command:
 Container naming: devc-<owner>-<repo>-<randomid>
 
 Example:
-  devc https://github.com/user/repo
-  devc create user/repo --branch develop`,
+  devc create https://github.com/user/repo
+  devc create github.com/user/repo
+  devc create https://github.com/user/repo --branch develop`,
 	Args: cobra.ExactArgs(1),
 	Run:  runCreate,
 }
@@ -266,7 +267,6 @@ func parseRepoURL(url string) (owner, repo string, err error) {
 		`^https?://github\.com/([^/]+)/([^/]+)/?$`,
 		`^git@github\.com:([^/]+)/([^/]+)\.git$`,
 		`^github\.com/([^/]+)/([^/]+)/?$`,
-		`^([^/.][^/.]*)/([^/]+)$`,
 	}
 
 	for _, pattern := range patterns {
@@ -279,7 +279,7 @@ func parseRepoURL(url string) (owner, repo string, err error) {
 		}
 	}
 
-	return "", "", fmt.Errorf("invalid repository URL format: %s", url)
+	return "", "", fmt.Errorf("invalid repository URL format: use https://github.com/<owner>/<repo>, github.com/<owner>/<repo>, or git@github.com:<owner>/<repo>.git")
 }
 
 func serializeProjectConfig(cfg *types.ProjectConfig) ([]byte, error) {

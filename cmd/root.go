@@ -40,9 +40,8 @@ Quick start:
 }
 
 func isRepoURL(arg string) bool {
-	if strings.HasPrefix(arg, "http://") || strings.HasPrefix(arg, "https://") || strings.HasPrefix(arg, "git@") {
-		_, _, err := parseRepoURL(arg)
-		return err == nil
+	if !strings.HasPrefix(arg, "http://") && !strings.HasPrefix(arg, "https://") && !strings.HasPrefix(arg, "git@") && !strings.HasPrefix(arg, "github.com/") {
+		return false
 	}
 
 	_, _, err := parseRepoURL(arg)

@@ -66,26 +66,27 @@ devc --version
 Create a ready-to-use environment directly from GitHub:
 
 ```bash
-devc create owner/repo
+devc create https://github.com/owner/repo
+devc create github.com/owner/repo
 ```
 
-The root command also accepts repository shorthand:
+The root command also accepts a GitHub repository URL without `https://`:
 
 ```bash
-devc owner/repo
+devc github.com/owner/repo
 devc https://github.com/owner/repo
 ```
 
 For a specific branch:
 
 ```bash
-devc create owner/repo --branch develop
+devc create https://github.com/owner/repo --branch develop
 ```
 
 If automatic language detection is not what you want, override it:
 
 ```bash
-devc create owner/repo --languages go,node
+devc create https://github.com/owner/repo --languages go,node
 ```
 
 Once the environment is ready, connect with:
@@ -214,6 +215,6 @@ make tidy
 
 ## Current scope
 
-- GitHub repository creation currently targets GitHub URLs and `owner/repo` shorthand
+- GitHub repository creation currently targets explicit GitHub URLs, not bare `owner/repo` shorthand
 - JetBrains integration currently prints connection details rather than launching the IDE directly
 - The project is centered on SSH-based development rather than Docker exec-style interaction
