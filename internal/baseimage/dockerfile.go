@@ -1,43 +1,11 @@
 package baseimage
 
-const BaseDockerfile = `FROM ubuntu:22.04
+import (
+	"encoding/base64"
+	"fmt"
+)
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV USER=dev
-
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    wget \
-    build-essential \
-    sudo \
-    openssh-server \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user with sudo access
-RUN groupadd --gid 1000 $USER && \
-    useradd --uid 1000 --gid 1000 -m -s /bin/bash $USER && \
-    echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    mkdir -p /home/$USER/.ssh && \
-    chmod 700 /home/$USER/.ssh && \
-    chown -R $USER:$USER /home/$USER/.ssh && \
-    mkdir -p /workspace && \
-    chown -R $USER:$USER /workspace
-
-# Configure SSH
-RUN mkdir -p /var/run/sshd && \
-    sed -i 's/#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
-    echo "AllowUsers dev" >> /etc/ssh/sshd_config
-
-# SSH agent forwarding support
-RUN echo 'Host *\n    ForwardAgent yes' >> /etc/ssh/ssh_config
-
-# Create entrypoint script
-RUN cat <<'EOF' > /usr/local/bin/devc-entrypoint.sh
-#!/bin/bash
+const entrypointScript = `#!/bin/bash
 set -euo pipefail
 
 align_dev_user() {
@@ -121,9 +89,46 @@ prepare_workspace
 start_dind
 
 exec "$@"
-EOF
+`
 
-RUN chmod +x /usr/local/bin/devc-entrypoint.sh
+var BaseDockerfile = fmt.Sprintf(`FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV USER=dev
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    wget \
+    build-essential \
+    sudo \
+    openssh-server \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user with sudo access
+RUN groupadd --gid 1000 $USER && \
+    useradd --uid 1000 --gid 1000 -m -s /bin/bash $USER && \
+    echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    mkdir -p /home/$USER/.ssh && \
+    chmod 700 /home/$USER/.ssh && \
+    chown -R $USER:$USER /home/$USER/.ssh && \
+    mkdir -p /workspace && \
+    chown -R $USER:$USER /workspace
+
+# Configure SSH
+RUN mkdir -p /var/run/sshd && \
+    sed -i 's/#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    echo "AllowUsers dev" >> /etc/ssh/sshd_config
+
+# SSH agent forwarding support
+RUN echo 'Host *\n    ForwardAgent yes' >> /etc/ssh/ssh_config
+
+# Create entrypoint script
+RUN printf '%%s' '%s' | base64 -d > /usr/local/bin/devc-entrypoint.sh && \
+    chmod +x /usr/local/bin/devc-entrypoint.sh
 
 WORKDIR /workspace
 
@@ -131,7 +136,7 @@ EXPOSE 22
 
 ENTRYPOINT ["/usr/local/bin/devc-entrypoint.sh"]
 CMD ["/usr/sbin/sshd", "-D"]
-`
+`, base64.StdEncoding.EncodeToString([]byte(entrypointScript)))
 
 const ImageName = "devc-base"
 const ImageTag = "v2"
