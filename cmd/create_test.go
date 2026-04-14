@@ -43,11 +43,9 @@ func TestParseRepoURL(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "owner/repo shorthand",
-			url:       "torvalds/linux",
-			wantOwner: "torvalds",
-			wantRepo:  "linux",
-			wantErr:   false,
+			name:    "owner repo shorthand is invalid",
+			url:     "torvalds/linux",
+			wantErr: true,
 		},
 		{
 			name:      "https with .git extension",

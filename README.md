@@ -1,175 +1,95 @@
-## Devc
+# devc
 
-`devc` is a CLI for creating isolated development containers with a simple SSH-based workflow.
+`devc` turns a GitHub repository into a ready-to-code development container you can open from your editor over SSH.
 
-It is designed for two common cases:
+The primary path is simple: point `devc` at a GitHub repository, let it detect the stack and prepare the environment, then connect with VS Code, JetBrains, or plain SSH. Local projects are supported too, but GitHub is the default experience.
 
-- Spin up a container for an existing local project
-- Create a ready-to-use development environment directly from a GitHub repository
+## Why devc
 
-Instead of maintaining complex Dockerfiles per project, you describe the tools you need in a small config file, build the image, and connect through your editor or plain SSH.
+- Start a development environment directly from a GitHub repository
+- Keep project toolchains isolated without changing how you work in your editor
+- Replace hand-written per-project Dockerfiles with reusable features
+- Connect with plain SSH, VS Code Remote - SSH, or JetBrains Gateway
+- Rebuild environments when dependencies change while keeping workspace data intact
 
 ## Highlights
 
-- Simple CLI for local and GitHub-based development containers
-- Reproducible toolchains through reusable features
-- SSH-first workflow that works with editors you already use
-- VS Code integration out of the box
-- JetBrains connection instructions via SSH/Gateway
-- Rebuild containers when feature requirements change
-- Automatic container state and SSH config management
-- Non-root workspace ownership for writable repos and build outputs
-- Nested Docker support when the `docker` feature is enabled
-
-## How It Works
-
-`devc` builds a base Ubuntu image, installs the features you configure, starts a Docker container, and adds an SSH entry to your local `~/.ssh/config`.
-
-Containers are prepared for a non-root `dev` user. In local project mode, `devc` aligns that user with your host UID/GID so bind-mounted repositories stay writable. In GitHub mode, the managed workspace volume is repaired and the repository is cloned as `dev` instead of `root`.
-
-From there you can:
-
-- open the environment in VS Code
-- connect from JetBrains Gateway
-- use `ssh <container-name>` directly
-
-There are two working modes:
-
-- Local project mode: your current project folder is bind-mounted into the container under `/workspace/<project>`
-- GitHub mode: the repository is cloned inside a Docker volume and managed under `~/.devc`
-
-If the `docker` feature is present, `devc` starts the container in privileged mode, attaches a dedicated `/var/lib/docker` volume, and launches an internal `dockerd` so `docker build`, `docker run`, and similar commands work from inside the dev container.
+- GitHub-first onboarding for new environments
+- Local project support when you want to containerize an existing repo
+- Reproducible feature-based images instead of bespoke setup scripts
+- Stable SSH-based access for editors and terminal use
+- Non-root workspace handling for writable repos and build outputs
+- Docker-in-Docker support through the `docker` feature
 
 ## Requirements
 
-Before using `devc`, make sure you have:
+You need the following on the host machine:
 
-- Docker installed and running
+- Docker
+- Git
 - An SSH public key in `~/.ssh/` such as `id_ed25519.pub`, `id_rsa.pub`, or `id_ecdsa.pub`
-- Git installed
-- Internet access for downloading base images, features, and repositories
 
-Optional:
+Optional tools:
 
-- VS Code with the Remote - SSH extension
-- JetBrains Gateway or a JetBrains IDE with SSH-based remote workflow
-- Go 1.25+ if you want to build `devc` from source
+- VS Code with Remote - SSH
+- JetBrains Gateway or a JetBrains IDE with SSH-based remote development
+- Go 1.25.5+ if you want to build `devc` from source
 
 ## Installation
+
+Install with Go:
+
+```bash
+go install github.com/IsmailAki/devc@latest
+```
 
 Build from source:
 
 ```bash
+git clone https://github.com/IsmailAki/devc.git
+cd devc
 make build
 ```
 
-The binary will be created at `bin/devc`.
+The compiled binary is written to `bin/devc`.
 
-## Releases
-
-This repository is configured to publish GitHub releases with GoReleaser.
-
-To cut a new release:
+To verify the installed version:
 
 ```bash
-git tag -a v0.1.1 -m "Release v0.1.1"
-git push origin v0.1.1
-```
-
-Pushing a `v*` tag triggers GitHub Actions, which runs GoReleaser, builds release archives for macOS and Linux, and publishes them to the GitHub release page.
-
-To install it system-wide:
-
-```bash
-sudo make install
-```
-
-Or run it without installing:
-
-```bash
-make run ARGS="list"
+devc --version
 ```
 
 ## Quick Start
 
-### Local Project
+### Start from GitHub
 
-Inside your project directory:
+Create a ready-to-use environment directly from GitHub:
 
 ```bash
-devc init
-devc edit
-devc build
-devc up
-devc ssh
+devc create https://github.com/owner/repo
+devc create github.com/owner/repo
 ```
 
-To open the same container in VS Code:
+The root command also accepts a GitHub repository URL without `https://`:
 
 ```bash
-devc connect vscode
-```
-
-### GitHub Repository
-
-Create a container directly from GitHub:
-
-```bash
-devc create owner/repo
-```
-
-You can also use the short form handled by the root command:
-
-```bash
-devc owner/repo
+devc github.com/owner/repo
 devc https://github.com/owner/repo
 ```
 
 For a specific branch:
 
 ```bash
-devc create owner/repo --branch develop
+devc create https://github.com/owner/repo --branch develop
 ```
 
-## Typical Workflow
-
-### 1. Initialize a project
+If automatic language detection is not what you want, override it:
 
 ```bash
-devc init
+devc create https://github.com/owner/repo --languages go,node
 ```
 
-This creates `.devc/devc.yml` in your project and lets you pick plugins in a terminal UI.
-
-### 2. Define your tools
-
-Example config:
-
-```yaml
-name: my-project
-description: Local development environment
-
-features:
-  - name: node
-    version: "20"
-  - name: python
-    version: "3.12"
-  - name: docker
-```
-
-### 3. Build the image
-
-```bash
-devc build
-```
-
-### 4. Start the container
-
-```bash
-devc up
-```
-
-### 5. Connect
+Once the environment is ready, connect with:
 
 ```bash
 devc ssh
@@ -177,12 +97,23 @@ devc connect vscode
 devc connect jetbrains
 ```
 
-### 6. Rebuild after feature changes
+### Bring an existing local project
 
-After editing plugins with `devc edit` or changing `.devc/devc.yml` manually:
+Inside an existing project directory:
 
 ```bash
-devc rebuild
+devc init
+devc build
+devc up
+devc ssh
+```
+
+This creates `.devc/devc.yml` in your project and lets you pick plugins in a terminal UI.
+
+You can also skip the explicit build step:
+
+```bash
+devc up --build
 ```
 
 ### Edit an existing container
@@ -196,103 +127,112 @@ devc edit <container-name>
 
 When you run `devc edit` without a container name, `devc` shows all known containers in a terminal UI, lets you choose one, and then edits its plugins. It checks the selected container's local `.devc/devc.yml` first and falls back to the stored `~/.devc/containers/<name>/devc.yml` if no local config exists.
 
-## Available Commands
+After editing, you can rebuild immediately from the prompt or later with `devc rebuild [name]`.
 
-| Command | What it does |
-| --- | --- |
-| `devc init` | Creates a new local project config |
-| `devc edit [name]` | Opens a terminal UI to edit plugins for a container |
-| `devc build` | Builds the Docker image for the current project |
-| `devc up` | Starts the development container |
-| `devc ssh [name]` | Opens an SSH session into a container |
-| `devc connect <ide> [name]` | Connects using `vscode` or shows JetBrains connection info |
-| `devc list` | Lists running containers |
-| `devc list --all` | Lists running and stopped containers |
-| `devc features list` | Lists built-in and user-defined features |
-| `devc features show <name>` | Shows feature details and parameters |
-| `devc stop [name]` | Stops a running container |
-| `devc rebuild [name]` | Rebuilds a container while preserving project data |
-| `devc destroy [name]` | Removes a container and its managed state |
-| `devc create <repo>` | Creates a container from a GitHub repository |
+## Configuration
 
-## Built-In Features
+For local projects, `devc` reads `.devc/devc.yml` from the repository root. For managed containers created from GitHub, it stores the active config under `~/.devc/containers/<name>/devc.yml`.
+
+The interactive `devc edit` flow edits plugins only in the current version. For a selected container it prefers the local `.devc/devc.yml` when present, and falls back to the stored container config otherwise.
+
+## Built-in features
 
 `devc` currently ships with these built-in features:
 
-- `node`
-- `python`
-- `go`
-- `rust`
-- `java`
-- `ruby`
-- `dotnet`
-- `docker`
-- `terraform`
-- `opencode`
 - `claude-code`
+- `docker`
+- `dotnet`
+- `go`
+- `java`
+- `node`
+- `opencode`
+- `python`
+- `ruby`
+- `rust`
+- `terraform`
 
-To inspect the exact parameters for any feature:
+To inspect available features and their parameters:
 
 ```bash
+devc features list
 devc features show node
 ```
 
-## Editor Support
-
-### VS Code
-
-`devc connect vscode` launches VS Code using Remote - SSH and opens the project path inside the container.
-
-### JetBrains
-
-`devc connect jetbrains` prints the SSH/Gateway connection details you can use manually.
-
-## Data and State
-
-`devc` stores container metadata under:
-
-```text
-~/.devc/containers/<container-name>/
-```
-
-That directory is used for managed state such as:
-
-- `state.json`
-- `metadata.json`
-- stored `devc.yml`
-
-For local projects, your actual source code stays in your existing folder on the host.
-
-For GitHub-created containers, the repository lives inside a Docker volume attached to the container.
-
-## Custom Features
-
-In addition to built-in features, `devc` can load user-defined features from:
+You can also define your own features under:
 
 ```text
 ~/.devc/features/<feature-name>/feature.yml
 ```
 
-This lets you keep team-specific or personal tooling outside the core project.
+## Docker-in-Docker
 
-## Notes and Limitations
+If the `docker` feature is enabled:
 
-- GitHub repository creation currently targets GitHub URLs and `owner/repo` shorthand
-- Language detection for `devc create` uses the GitHub API and may fail if rate limits are exceeded
-- JetBrains support currently provides connection instructions rather than a full automatic launcher
-- `devc` expects SSH-based access and will configure entries in your local `~/.ssh/config`
+- the container starts in privileged mode
+- a dedicated Docker data volume is attached at `/var/lib/docker`
+- an internal `dockerd` process is started automatically
+- `docker build`, `docker run`, and similar commands work from inside the dev container
+
+Example:
+
+```yaml
+features:
+  - name: docker
+```
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `devc create <repo>` | Create a container from a GitHub repository |
+| `devc init` | Create `.devc/devc.yml` for the current project |
+| `devc edit [name]` | Open a terminal UI to edit plugins for a container |
+| `devc build` | Build the current project's feature image |
+| `devc up` | Start the current project's container |
+| `devc ssh [name]` | Open an SSH session into a container |
+| `devc connect <ide> [name]` | Connect with VS Code or print JetBrains connection info |
+| `devc list` | List running containers |
+| `devc list --all` | List running and stopped containers |
+| `devc rebuild [name]` | Rebuild a container while preserving workspace data |
+| `devc stop [name]` | Stop a container |
+| `devc destroy [name]` | Remove a container and its managed state |
+| `devc features list` | List available features |
+| `devc features show <name>` | Show feature details |
+
+Run `devc --help` or `devc <command> --help` for full usage details.
+
+## Editor support
+
+### VS Code
+
+Open the environment in VS Code through Remote - SSH:
+
+```bash
+devc connect vscode
+```
+
+### JetBrains
+
+Print the SSH or Gateway connection details for a container:
+
+```bash
+devc connect jetbrains
+```
 
 ## Development
 
-Useful project commands:
+Useful development commands:
 
 ```bash
 make build
 make test
 make fmt
 make lint
+make tidy
 ```
 
-## License
+## Current scope
 
-Add your project license here.
+- GitHub repository creation currently targets explicit GitHub URLs, not bare `owner/repo` shorthand
+- JetBrains integration currently prints connection details rather than launching the IDE directly
+- The project is centered on SSH-based development rather than Docker exec-style interaction
