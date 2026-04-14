@@ -28,7 +28,7 @@ func promptProjectName(defaultName string) (string, error) {
 	return strings.TrimSpace(name), nil
 }
 
-func pickContainerToEdit(containers []containerInfo) (string, error) {
+func pickContainer(containers []containerInfo, message string) (string, error) {
 	if len(containers) == 0 {
 		return "", fmt.Errorf("no containers available")
 	}
@@ -60,7 +60,7 @@ func pickContainerToEdit(containers []containerInfo) (string, error) {
 
 	var selected string
 	if err := survey.AskOne(&survey.Select{
-		Message:  "Select a container to edit:",
+		Message:  message,
 		Options:  options,
 		PageSize: minInt(len(options), 12),
 	}, &selected); err != nil {
@@ -123,6 +123,18 @@ func promptRebuildNow(containerName string) (bool, error) {
 	}
 
 	return rebuild, nil
+}
+
+func promptConfirm(message string, defaultValue bool) (bool, error) {
+	var confirmed bool
+	if err := survey.AskOne(&survey.Confirm{
+		Message: message,
+		Default: defaultValue,
+	}, &confirmed); err != nil {
+		return false, err
+	}
+
+	return confirmed, nil
 }
 
 func isPromptCancelled(err error) bool {

@@ -193,9 +193,9 @@ features:
 | `devc connect <ide> [name]` | Connect with VS Code or print JetBrains connection info |
 | `devc list` | List running containers |
 | `devc list --all` | List running and stopped containers |
-| `devc rebuild [name]` | Rebuild a container while preserving workspace data |
+| `devc rebuild [name]` | Rebuild a container while preserving workspace data; prompts for a container when omitted |
 | `devc stop [name]` | Stop a container |
-| `devc destroy [name]` | Remove a container and its managed state |
+| `devc destroy [name]` | Remove a container and its managed state; prompts for a container when omitted |
 | `devc features list` | List available features |
 | `devc features show <name>` | Show feature details |
 

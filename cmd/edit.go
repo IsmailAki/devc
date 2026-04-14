@@ -92,7 +92,7 @@ func resolveEditContainerName(args []string) (string, error) {
 		return "", fmt.Errorf("no dev containers found")
 	}
 
-	containerName, err := pickContainerToEdit(containers)
+	containerName, err := pickContainer(containers, "Select a container to edit:")
 	if err != nil {
 		return "", err
 	}

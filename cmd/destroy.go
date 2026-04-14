@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/IsmailAki/devc/internal/container"
 	"github.com/IsmailAki/devc/internal/sshconfig"
@@ -34,16 +32,12 @@ func init() {
 }
 
 func runDestroy(cmd *cobra.Command, args []string) {
-	var containerName string
-
-	if len(args) > 0 {
-		containerName = args[0]
-	} else {
-		containerName = firstContainerName()
-	}
-
-	if containerName == "" {
-		fmt.Fprintln(os.Stderr, "No container specified and no containers found")
+	containerName, err := resolveDestroyContainerName(args)
+	if err != nil {
+		if isPromptCancelled(err) {
+			return
+		}
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -54,11 +48,15 @@ func runDestroy(cmd *cobra.Command, args []string) {
 	}
 
 	if !destroyForce {
-		fmt.Printf("Are you sure you want to destroy container '%s'? [y/N]: ", containerName)
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-		if response != "y" && response != "yes" {
+		confirmed, err := promptConfirm(fmt.Sprintf("Destroy container '%s'?", containerName), false)
+		if err != nil {
+			if isPromptCancelled(err) {
+				return
+			}
+			fmt.Fprintf(os.Stderr, "Failed to read confirmation: %v\n", err)
+			os.Exit(1)
+		}
+		if !confirmed {
 			fmt.Println("Cancelled")
 			return
 		}
@@ -86,4 +84,24 @@ func runDestroy(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Container '%s' destroyed\n", containerName)
+}
+
+func resolveDestroyContainerName(args []string) (string, error) {
+	if len(args) > 0 {
+		return args[0], nil
+	}
+
+	containers, err := loadContainerInfos(true)
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %w", err)
+	}
+	if len(containers) == 0 {
+		return "", fmt.Errorf("no container specified and no containers found")
+	}
+
+	if len(containers) == 1 {
+		return containers[0].Name, nil
+	}
+
+	return pickContainer(containers, "Select a container to destroy:")
 }
