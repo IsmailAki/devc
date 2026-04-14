@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	appVersion = "dev"
-	commit     = "none"
-	date       = "unknown"
+	appVersion = defaultAppVersion
+	commit     = defaultCommit
+	date       = defaultDate
 )
 
 var rootCmd = &cobra.Command{
@@ -28,7 +28,7 @@ Quick start:
   devc up            Start the development container
   devc ssh           Connect to the container
   devc connect vscode  Connect VS Code to the container`,
-	Version: appVersion,
+	Version: defaultAppVersion,
 	Args:    cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) > 0 && isRepoURL(args[0]) {
@@ -56,5 +56,10 @@ func Execute() {
 }
 
 func init() {
+	metadata := loadBuildMetadata()
+	appVersion = metadata.version
+	commit = metadata.commit
+	date = metadata.date
+	rootCmd.Version = appVersion
 	rootCmd.SetVersionTemplate(fmt.Sprintf("devc version %s (commit: %s, built: %s)\n", appVersion, commit, date))
 }
