@@ -24,6 +24,7 @@ with support for multiple IDEs (VS Code, JetBrains) through standard SSH connect
 
 Quick start:
   devc init          Create a new devc project
+  devc edit          Edit plugins for an existing container
   devc build         Build the development image
   devc up            Start the development container
   devc ssh           Connect to the container

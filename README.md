@@ -98,6 +98,7 @@ Inside your project directory:
 
 ```bash
 devc init
+devc edit
 devc build
 devc up
 devc ssh
@@ -138,7 +139,7 @@ devc create owner/repo --branch develop
 devc init
 ```
 
-This creates `.devc/devc.yml` in your project.
+This creates `.devc/devc.yml` in your project and lets you pick plugins in a terminal UI.
 
 ### 2. Define your tools
 
@@ -178,17 +179,29 @@ devc connect jetbrains
 
 ### 6. Rebuild after feature changes
 
-After editing `.devc/devc.yml`:
+After editing plugins with `devc edit` or changing `.devc/devc.yml` manually:
 
 ```bash
 devc rebuild
 ```
+
+### Edit an existing container
+
+Use the interactive editor to update plugins for an existing container:
+
+```bash
+devc edit
+devc edit <container-name>
+```
+
+When you run `devc edit` without a container name, `devc` shows all known containers in a terminal UI, lets you choose one, and then edits its plugins. It checks the selected container's local `.devc/devc.yml` first and falls back to the stored `~/.devc/containers/<name>/devc.yml` if no local config exists.
 
 ## Available Commands
 
 | Command | What it does |
 | --- | --- |
 | `devc init` | Creates a new local project config |
+| `devc edit [name]` | Opens a terminal UI to edit plugins for a container |
 | `devc build` | Builds the Docker image for the current project |
 | `devc up` | Starts the development container |
 | `devc ssh [name]` | Opens an SSH session into a container |

@@ -68,40 +68,42 @@ func runRebuild(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if err := rebuildContainer(containerName, rebuildConfigPath, rebuildForce); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func rebuildContainer(containerName string, overridePath string, force bool) error {
 	currentState, err := state.LoadState(containerName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "No existing container found: %s\n", containerName)
-		fmt.Fprintln(os.Stderr, "Run 'devc up' to create a new container")
-		os.Exit(1)
+		return fmt.Errorf("no existing container found: %s\nRun 'devc up' to create a new container", containerName)
 	}
 
 	metadata, err := state.LoadMetadata(containerName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load metadata: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to load metadata: %w", err)
 	}
 
-	cfg, configPath, err := config.ResolveConfig(containerName, rebuildConfigPath)
+	cfg, configPath, err := config.ResolveConfig(containerName, overridePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if rebuildConfigPath != "" || configPath != state.GetConfigPath(containerName) {
+	if overridePath != "" || configPath != state.GetConfigPath(containerName) {
 		fmt.Printf("Copying override config to stored location...\n")
 		if err := config.CopyOverrideConfig(containerName, configPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to store config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to store config: %w", err)
 		}
 	}
 
 	repoName := metadata.Repository
 	newImage := feature.GenerateImageTag(repoName, cfg.Features)
 
-	if newImage == currentState.Image && !rebuildForce {
+	if newImage == currentState.Image && !force {
 		fmt.Printf("No feature changes detected (image: %s)\n", newImage)
 		fmt.Println("Use --force to rebuild anyway")
-		os.Exit(0)
+		return nil
 	}
 
 	ctx := context.Background()
@@ -112,16 +114,14 @@ func runRebuild(cmd *cobra.Command, args []string) {
 
 	fmt.Println("\nEnsuring base image exists...")
 	if err := baseimage.Ensure(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to ensure base image: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to ensure base image: %w", err)
 	}
 
 	registry := feature.NewRegistry()
 
 	dockerfile, err := feature.GenerateDockerfile(cfg.Features, registry)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to generate Dockerfile: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to generate Dockerfile: %w", err)
 	}
 
 	fmt.Println("\nFeatures:")
@@ -136,8 +136,7 @@ func runRebuild(cmd *cobra.Command, args []string) {
 	if len(dockerfile) > 0 {
 		fmt.Println("\nBuilding new image...")
 		if err := buildFeatureImage(ctx, dockerfile, newImage); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to build image: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to build image: %w", err)
 		}
 	}
 
@@ -152,8 +151,7 @@ func runRebuild(cmd *cobra.Command, args []string) {
 		VolumeName:       currentState.WorkspaceVolume,
 		ExtraVolumes:     []string{currentState.DockerVolume},
 	}); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to remove old container: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to remove old container: %w", err)
 	}
 
 	fmt.Println("Creating new container...")
@@ -181,14 +179,12 @@ func runRebuild(cmd *cobra.Command, args []string) {
 
 	containerID, err := container.Create(ctx, createOpts)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create container: %v\n", err)
 		if volumeName != "" {
-			fmt.Fprintf(os.Stderr, "\nYour data is safe in volume: %s\n", volumeName)
+			return fmt.Errorf("failed to create container: %w\n\nYour data is safe in volume: %s\nYou can retry or manually recover", err, volumeName)
 		} else if metadata.SourcePath != "" {
-			fmt.Fprintf(os.Stderr, "\nYour source data remains in: %s\n", metadata.SourcePath)
+			return fmt.Errorf("failed to create container: %w\n\nYour source data remains in: %s\nYou can retry or manually recover", err, metadata.SourcePath)
 		}
-		fmt.Fprintln(os.Stderr, "You can retry or manually recover")
-		os.Exit(1)
+		return fmt.Errorf("failed to create container: %w", err)
 	}
 
 	fmt.Println("Starting container...")
@@ -197,20 +193,17 @@ func runRebuild(cmd *cobra.Command, args []string) {
 		Timeout:    60 * time.Second,
 		Port:       allocatedPort,
 	}); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to start container: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to start container: %w", err)
 	}
 
 	fmt.Println("Setting up SSH key...")
 	if err := container.SetupSSHKey(ctx, containerName); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to setup SSH key: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to setup SSH key: %w", err)
 	}
 
 	if metadata.InitMode != "local" {
 		if err := container.PrepareWorkspace(ctx, containerName, "/workspace"); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to prepare workspace: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to prepare workspace: %w", err)
 		}
 	}
 
@@ -230,8 +223,7 @@ func runRebuild(cmd *cobra.Command, args []string) {
 	}
 
 	if err := state.SaveState(containerName, newState); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to save container state: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to save container state: %w", err)
 	}
 
 	metadata.Features = featureNames
@@ -252,4 +244,6 @@ func runRebuild(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("SSH: ssh %s\n", containerName)
 	fmt.Printf("Port: %d\n", allocatedPort)
+
+	return nil
 }
