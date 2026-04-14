@@ -97,6 +97,7 @@ func runUp(cmd *cobra.Command, args []string) {
 		}
 
 		fmt.Printf("SSH: ssh %s\n", containerName)
+		fmt.Printf("Root SSH: ssh %s\n", sshconfig.RootHostName(containerName))
 		fmt.Printf("Port: %d\n", existingState.SSHPort)
 		fmt.Printf("\nTo connect with VS Code:\n")
 		fmt.Printf("  code --remote ssh-remote+%s %s\n", containerName, remotePath)
@@ -207,6 +208,7 @@ func runUp(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("\nContainer '%s' started successfully!\n", containerName)
 	fmt.Printf("SSH: ssh %s\n", containerName)
+	fmt.Printf("Root SSH: ssh %s\n", sshconfig.RootHostName(containerName))
 	fmt.Printf("Port: %d\n", allocatedPort)
 	fmt.Printf("\nTo connect with VS Code:\n")
 	fmt.Printf("  code --remote ssh-remote+%s %s\n", containerName, remotePath)

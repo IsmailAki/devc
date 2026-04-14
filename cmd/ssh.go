@@ -5,9 +5,12 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/IsmailAki/devc/internal/sshconfig"
 	"github.com/IsmailAki/devc/internal/state"
 	"github.com/spf13/cobra"
 )
+
+var sshAsRoot bool
 
 var sshCmd = &cobra.Command{
 	Use:   "ssh [name]",
@@ -18,20 +21,17 @@ var sshCmd = &cobra.Command{
 }
 
 func init() {
+	sshCmd.Flags().BoolVar(&sshAsRoot, "root", false, "Connect as root instead of dev")
 	rootCmd.AddCommand(sshCmd)
 }
 
 func runSSH(cmd *cobra.Command, args []string) {
-	var containerName string
-
-	if len(args) > 0 {
-		containerName = args[0]
-	} else {
-		containerName = firstContainerName()
-	}
-
-	if containerName == "" {
-		fmt.Fprintln(os.Stderr, "No container specified and no containers found")
+	containerName, err := resolveSSHContainerName(args)
+	if err != nil {
+		if isPromptCancelled(err) {
+			return
+		}
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -47,13 +47,38 @@ func runSSH(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	sshCmd := exec.Command("ssh", containerName)
-	sshCmd.Stdin = os.Stdin
-	sshCmd.Stdout = os.Stdout
-	sshCmd.Stderr = os.Stderr
+	targetHost := containerName
+	if sshAsRoot {
+		targetHost = sshconfig.RootHostName(containerName)
+	}
 
-	if err := sshCmd.Run(); err != nil {
+	sshExecCmd := exec.Command("ssh", targetHost)
+	sshExecCmd.Stdin = os.Stdin
+	sshExecCmd.Stdout = os.Stdout
+	sshExecCmd.Stderr = os.Stderr
+
+	if err := sshExecCmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "SSH connection failed: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func resolveSSHContainerName(args []string) (string, error) {
+	if len(args) > 0 {
+		return args[0], nil
+	}
+
+	containers, err := loadContainerInfos(true)
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %w", err)
+	}
+	if len(containers) == 0 {
+		return "", fmt.Errorf("no container specified and no containers found")
+	}
+
+	if len(containers) == 1 {
+		return containers[0].Name, nil
+	}
+
+	return pickContainer(containers, "Select a container to connect:")
 }

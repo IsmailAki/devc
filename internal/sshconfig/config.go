@@ -21,12 +21,16 @@ func GetSSHConfigPath() string {
 	return filepath.Join(home, ".ssh", "config")
 }
 
-func GenerateEntry(state types.ContainerState, containerName string) string {
+func RootHostName(containerName string) string {
+	return containerName + "-root"
+}
+
+func GenerateEntry(state types.ContainerState, hostName string, user string) string {
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("Host %s\n", containerName))
+	buf.WriteString(fmt.Sprintf("Host %s\n", hostName))
 	buf.WriteString("    HostName localhost\n")
 	buf.WriteString(fmt.Sprintf("    Port %d\n", state.SSHPort))
-	buf.WriteString("    User dev\n")
+	buf.WriteString(fmt.Sprintf("    User %s\n", user))
 	buf.WriteString("    ForwardAgent yes\n")
 	buf.WriteString("    StrictHostKeyChecking no\n")
 	buf.WriteString("    UserKnownHostsFile /dev/null\n")
@@ -47,7 +51,8 @@ func AddEntry(state types.ContainerState, containerName string) error {
 	}
 
 	unmanaged, entries := splitManagedSection(string(content))
-	entries[containerName] = strings.TrimSpace(GenerateEntry(state, containerName))
+	entries[containerName] = strings.TrimSpace(GenerateEntry(state, containerName, "dev"))
+	entries[RootHostName(containerName)] = strings.TrimSpace(GenerateEntry(state, RootHostName(containerName), "root"))
 
 	if err := os.WriteFile(configPath, []byte(renderConfig(unmanaged, entries)), 0600); err != nil {
 		return fmt.Errorf("failed to write ssh config: %w", err)
@@ -69,6 +74,7 @@ func RemoveEntry(containerName string) error {
 
 	unmanaged, entries := splitManagedSection(string(content))
 	delete(entries, containerName)
+	delete(entries, RootHostName(containerName))
 
 	if err := os.WriteFile(configPath, []byte(renderConfig(unmanaged, entries)), 0600); err != nil {
 		return fmt.Errorf("failed to write ssh config: %w", err)
