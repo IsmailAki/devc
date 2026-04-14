@@ -6,7 +6,6 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/IsmailAki/devc/internal/state"
 	"github.com/IsmailAki/devc/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -36,36 +35,15 @@ type containerInfo struct {
 }
 
 func runList(cmd *cobra.Command, args []string) {
-	containers, err := state.ListContainers()
+	filtered, err := loadContainerInfos(listAll)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error listing containers: %v\n", err)
 		os.Exit(1)
 	}
 
-	if len(containers) == 0 {
+	if len(filtered) == 0 && listAll {
 		fmt.Println("No dev containers found")
 		return
-	}
-
-	var filtered []containerInfo
-	for _, name := range containers {
-		containerState, err := state.LoadState(name)
-		if err != nil {
-			continue
-		}
-
-		metadata, err := state.LoadMetadata(name)
-		if err != nil {
-			continue
-		}
-
-		if listAll || containerState.Status == "running" {
-			filtered = append(filtered, containerInfo{
-				Name:     name,
-				State:    containerState,
-				Metadata: metadata,
-			})
-		}
 	}
 
 	if len(filtered) == 0 {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/IsmailAki/devc/internal/config"
@@ -13,6 +14,15 @@ import (
 	"github.com/IsmailAki/devc/internal/state"
 	"github.com/IsmailAki/devc/pkg/types"
 )
+
+type editableConfigTarget struct {
+	ContainerName string
+	Metadata      *types.ContainerMetadata
+	LocalPath     string
+	GlobalPath    string
+	ActivePath    string
+	UseLocal      bool
+}
 
 func resolveCurrentProject() (string, *types.ProjectConfig, error) {
 	projectRoot, err := config.FindProjectRoot("")
@@ -39,27 +49,27 @@ func resolveLocalContainerName(projectRoot string, cfg *types.ProjectConfig) str
 func findLocalContainerByProject(projectRoot string) string {
 	projectRoot = normalizePath(projectRoot)
 
-	containers, err := state.ListContainers()
+	containers, err := loadContainerInfos(true)
 	if err != nil {
 		return ""
 	}
 
-	for _, name := range containers {
-		metadata, err := state.LoadMetadata(name)
-		if err != nil || metadata.InitMode != "local" {
+	for _, container := range containers {
+		metadata := container.Metadata
+		if metadata == nil || metadata.InitMode != "local" {
 			continue
 		}
 
 		if normalizePath(metadata.SourcePath) == projectRoot {
-			return name
+			return container.Name
 		}
 
 		if normalizePath(metadata.ProjectPath) == projectRoot {
-			return name
+			return container.Name
 		}
 
 		if normalizePath(filepath.Dir(metadata.ConfigPath)) == filepath.Join(projectRoot, config.ProjectConfigDir) {
-			return name
+			return container.Name
 		}
 	}
 
@@ -67,26 +77,119 @@ func findLocalContainerByProject(projectRoot string) string {
 }
 
 func firstContainerName() string {
-	containers, err := state.ListContainers()
+	containers, err := loadContainerInfos(true)
 	if err != nil || len(containers) == 0 {
 		return ""
 	}
 
 	if len(containers) == 1 {
-		return containers[0]
+		return containers[0].Name
 	}
 
+	for _, container := range containers {
+		if container.State != nil && container.State.Status == "running" {
+			return container.Name
+		}
+	}
+
+	return containers[0].Name
+}
+
+func loadContainerInfos(includeStopped bool) ([]containerInfo, error) {
+	containers, err := state.ListContainers()
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]containerInfo, 0, len(containers))
 	for _, name := range containers {
-		st, err := state.LoadState(name)
+		containerState, err := state.LoadState(name)
 		if err != nil {
 			continue
 		}
-		if st.Status == "running" {
-			return name
+
+		metadata, err := state.LoadMetadata(name)
+		if err != nil {
+			continue
+		}
+
+		if includeStopped || containerState.Status == "running" {
+			filtered = append(filtered, containerInfo{
+				Name:     name,
+				State:    containerState,
+				Metadata: metadata,
+			})
 		}
 	}
 
-	return containers[0]
+	sort.Slice(filtered, func(i, j int) bool {
+		if filtered[i].State.Status == filtered[j].State.Status {
+			return filtered[i].Name < filtered[j].Name
+		}
+		return filtered[i].State.Status == "running"
+	})
+
+	return filtered, nil
+}
+
+func resolveEditableConfigTarget(containerName string) (*editableConfigTarget, *types.ProjectConfig, error) {
+	metadata, err := state.LoadMetadata(containerName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	target := &editableConfigTarget{
+		ContainerName: containerName,
+		Metadata:      metadata,
+		GlobalPath:    state.GetConfigPath(containerName),
+	}
+
+	if metadata.InitMode == "local" && metadata.SourcePath != "" {
+		target.LocalPath = config.GetProjectConfigPath(metadata.SourcePath)
+		if _, err := os.Stat(target.LocalPath); err == nil {
+			cfg, err := config.LoadConfigFromPath(target.LocalPath)
+			if err != nil {
+				return nil, nil, err
+			}
+			target.ActivePath = target.LocalPath
+			target.UseLocal = true
+			return target, cfg, nil
+		}
+	}
+
+	cfg, err := config.LoadGlobalConfig(containerName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	target.ActivePath = target.GlobalPath
+	return target, cfg, nil
+}
+
+func (t *editableConfigTarget) Save(cfg *types.ProjectConfig) error {
+	if t.UseLocal {
+		if err := config.SaveProjectConfig(cfg, t.Metadata.SourcePath); err != nil {
+			return err
+		}
+		if err := config.SaveGlobalConfig(t.ContainerName, cfg); err != nil {
+			return err
+		}
+		t.ActivePath = t.LocalPath
+	} else {
+		if err := config.SaveGlobalConfig(t.ContainerName, cfg); err != nil {
+			return err
+		}
+		t.ActivePath = t.GlobalPath
+	}
+
+	if t.Metadata != nil {
+		t.Metadata.ConfigPath = t.ActivePath
+		if err := state.SaveMetadata(t.ContainerName, t.Metadata); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func resolveDefaultContainerName() string {

@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/IsmailAki/devc/internal/config"
 	"github.com/IsmailAki/devc/internal/feature"
@@ -31,42 +29,26 @@ func runInit(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-
 	cwd, _ := os.Getwd()
 	defaultName := filepath.Base(cwd)
 
-	fmt.Printf("Project name [%s]: ", defaultName)
-	nameInput, _ := reader.ReadString('\n')
-	name := strings.TrimSpace(nameInput)
-	if name == "" {
-		name = defaultName
+	name, err := promptProjectName(defaultName)
+	if err != nil {
+		if isPromptCancelled(err) {
+			return
+		}
+		fmt.Fprintf(os.Stderr, "Error reading project name: %v\n", err)
+		os.Exit(1)
 	}
 
 	registry := feature.NewRegistry()
-
-	fmt.Println("\nAvailable features:")
-	for _, f := range registry.List() {
-		fmt.Printf("  - %s: %s\n", f.Name, f.Description)
-	}
-
-	fmt.Print("\nEnter features (comma-separated, e.g., node,go,python): ")
-	featuresInput, _ := reader.ReadString('\n')
-	featuresInput = strings.TrimSpace(featuresInput)
-
-	features := []types.FeatureSpec{}
-	if featuresInput != "" {
-		for _, f := range strings.Split(featuresInput, ",") {
-			f = strings.TrimSpace(f)
-			if f != "" {
-				features = append(features, types.FeatureSpec{Name: f})
-			}
+	cfg := &types.ProjectConfig{Name: name}
+	if err := editProjectPlugins(cfg, registry); err != nil {
+		if isPromptCancelled(err) {
+			return
 		}
-	}
-
-	cfg := &types.ProjectConfig{
-		Name:     name,
-		Features: features,
+		fmt.Fprintf(os.Stderr, "Error selecting plugins: %v\n", err)
+		os.Exit(1)
 	}
 
 	if err := config.SaveProjectConfig(cfg, ""); err != nil {
@@ -79,7 +61,7 @@ func runInit(cmd *cobra.Command, args []string) {
 	fmt.Printf("\nCreated .devc/devc.yml\n")
 	fmt.Printf("Container name will be: %s\n", containerName)
 	fmt.Println("\nNext steps:")
-	fmt.Println("  1. Edit .devc/devc.yml to customize features")
+	fmt.Println("  1. Run 'devc edit' to update plugins")
 	fmt.Println("  2. Run 'devc build' to build the development image")
 	fmt.Println("  3. Run 'devc up' to start the container")
 }

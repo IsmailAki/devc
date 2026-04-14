@@ -108,15 +108,32 @@ devc up
 devc ssh
 ```
 
+This creates `.devc/devc.yml` in your project and lets you pick plugins in a terminal UI.
+
 You can also skip the explicit build step:
 
 ```bash
 devc up --build
 ```
 
+### Edit an existing container
+
+Use the interactive editor to update plugins for an existing container:
+
+```bash
+devc edit
+devc edit <container-name>
+```
+
+When you run `devc edit` without a container name, `devc` shows all known containers in a terminal UI, lets you choose one, and then edits its plugins. It checks the selected container's local `.devc/devc.yml` first and falls back to the stored `~/.devc/containers/<name>/devc.yml` if no local config exists.
+
+After editing, you can rebuild immediately from the prompt or later with `devc rebuild [name]`.
+
 ## Configuration
 
-TODO: this section will be expanded once the configuration editing flow is finalized.
+For local projects, `devc` reads `.devc/devc.yml` from the repository root. For managed containers created from GitHub, it stores the active config under `~/.devc/containers/<name>/devc.yml`.
+
+The interactive `devc edit` flow edits plugins only in the current version. For a selected container it prefers the local `.devc/devc.yml` when present, and falls back to the stored container config otherwise.
 
 ## Built-in features
 
@@ -169,15 +186,16 @@ features:
 | --- | --- |
 | `devc create <repo>` | Create a container from a GitHub repository |
 | `devc init` | Create `.devc/devc.yml` for the current project |
+| `devc edit [name]` | Open a terminal UI to edit plugins for a container |
 | `devc build` | Build the current project's feature image |
 | `devc up` | Start the current project's container |
 | `devc ssh [name]` | Open an SSH session into a container |
 | `devc connect <ide> [name]` | Connect with VS Code or print JetBrains connection info |
 | `devc list` | List running containers |
 | `devc list --all` | List running and stopped containers |
-| `devc rebuild [name]` | Rebuild a container while preserving workspace data |
+| `devc rebuild [name]` | Rebuild a container while preserving workspace data; prompts for a container when omitted |
 | `devc stop [name]` | Stop a container |
-| `devc destroy [name]` | Remove a container and its managed state |
+| `devc destroy [name]` | Remove a container and its managed state; prompts for a container when omitted |
 | `devc features list` | List available features |
 | `devc features show <name>` | Show feature details |
 
